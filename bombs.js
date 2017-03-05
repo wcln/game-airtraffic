@@ -7,12 +7,21 @@
 
 //////////////////// VARIABLES
 
+// unicode characters
+var EXPONENT_2 = "\u00B2";
+var SQUARE_ROOT = "\u221A";
+
 // settings (may be changed)
+var questions =  [SQUARE_ROOT+"64", SQUARE_ROOT+"81", SQUARE_ROOT+"25", "9"+EXPONENT_2];
+var answers = [8, 9, 5, 81];
 var PLANE_MIN_SPEED = 1;
 var PLANE_MAX_SPEED = 2.2;
 var PLANE_FLY_AWAY_SPEED = 15;
 var FPS = 40;
 
+// unicode characters
+var EXPONENT_2 = "\u00B2";
+var SQUARE_ROOT = "\u221A";
 
 var mute = false;
 var manifest;
@@ -20,13 +29,12 @@ var preload;
 var progressText;
 var startText;
 var scoreText;
-var planeImages = [];
+var planeImages = []; // array of all the possible plane images
+var questionCounter;
 
 var userInput; // user input text box
 
 var gameStarted = false;
-
-var currentAnswer = 8;
 
 
 var score = 0;
@@ -34,6 +42,8 @@ var score = 0;
 // constants (set in init function)
 var STAGE_WIDTH;
 var STAGE_HEIGHT;
+
+var planesArray = []; // array of all the plane objects
 
 
 // plane object
@@ -55,7 +65,15 @@ function init() {
 	stage.mouseEventsEnabled = true;
 	stage.enableMouseOver(); // Default, checks the mouse 20 times/second for hovering cursor changes
 
+	questionCounter = 0;
+
 	userInput = document.getElementById("overlayed").firstElementChild; // userInput.value gets value of input textbox
+	userInput.onclick = clearTextbox; // clears the contents of the textbox if user clicks on it
+	userInput.onkeydown = function(e) { // check if enter key is pressed on textbox
+		if (e.keyCode == 13) {
+			enterPressed();
+		}
+	};
 	document.getElementById("enter").onclick = enterPressed;
 
 	// add loading progress text (used by preload)
@@ -87,9 +105,16 @@ function tick(event) {
 				updateScore(-100);
 			}
 
-			planeObject.bitmap.x = -planeObject.width;
-			setupPlanes();
+			if (questionCounter < questions.length - 1) {
+				questionCounter++;
+				planeObject.bitmap.x = -planeObject.width;
+				setupPlanes();
 
+			} else { // no more questions... game is over
+
+				endGame();
+
+			}
 		}
 
 
@@ -164,6 +189,12 @@ function startGame(event) {
 	stage.removeChild(progressText);
 }
 
+function endGame() {
+	gameStarted = false;
+	alert("Game Complete! Score: " + score);
+	init();
+}
+
 /*
  * Adds images to stage and sets initial position.
  */
@@ -187,7 +218,7 @@ function setupPlanes() {
 	planeObject.height = planeImages[0].getBounds().height;
 	planeObject.bitmap.x = 0;
 	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
-	planeObject.question = "\u221A64";
+	planeObject.question = questions[questionCounter];
 	planeObject.solved = false; // has the question been solved yet?
 	planeObject.speed = Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED;
 	planeObject.label = new createjs.Text(planeObject.question, "20px Arial", "#000000");
@@ -200,16 +231,27 @@ function setupPlanes() {
  * Enter button is pressed
  */
 function enterPressed() {
-	if (parseInt(userInput.value) == currentAnswer) {
+
+	if (parseInt(userInput.value) == answers[questionCounter]) { // correct answer
 		var currentX = planeObject.bitmap.x;
-		console.log(currentX);
 		updateScore(100);
 		stage.removeChild(planeObject.label);
 		planeObject.speed = PLANE_FLY_AWAY_SPEED;
-	} else {
+		planeObject.solved = true;
+	} else { // wrong answer
 		updateScore(-50);
 
 	}
+
+	
+	clearTextbox();
+}
+
+/*
+ * Clears contents of textbox when user clicks on it.
+ */
+function clearTextbox() {
+	userInput.value = "";
 }
 
 /*
