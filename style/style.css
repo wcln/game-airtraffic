@@ -1,3 +1,4 @@
+/* the game canvas */
 canvas {
 	border: 1px solid #d3d3d3;
 	background-color: #ffffff;
@@ -9,7 +10,22 @@ canvas {
 	margin: auto;
 }
 
+/* mute button */
 #mute img {
 	width: 16px;
 	height: 16px;
+}
+
+/* HTML elements overlayed on top of game canvas */
+#overlayed {
+	position: absolute;
+	z-index: 1;
+	top: 600px;
+	left: 225px;
+	right: 225px;
+	bottom: 0;
+	width: 147px;
+	height: 25px;
+	margin: auto;
+	/*background-color: green;*/
 }

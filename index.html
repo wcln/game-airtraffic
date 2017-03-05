@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Bombs</title>
+<title>Air Traffic</title>
 <link rel="stylesheet" type="text/css" href="style/style.css"/>
 <link rel="shortcut icon" href="images/favicon.ico"/>
 <script src="https://code.createjs.com/easeljs-0.8.2.min.js"></script>
 <script src="https://code.createjs.com/tweenjs-0.6.2.min.js"></script>
 <script src="https://code.createjs.com/soundjs-0.6.2.min.js"></script>
+<script src="https://code.createjs.com/preloadjs-0.6.2.min.js"></script>
 <script type="text/javascript" src="spritedata.js"></script>
 <script type="text/javascript" src="bombs.js"></script>
 </head>
 <body onload="init();">
 
-	<canvas id="gameCanvas" width="600" height="550">
+	<canvas id="gameCanvas" width="900" height="700">
 
 	</canvas>
+	<div id="overlayed">
+		<input type="text" name="user" value="" size="1">
+		<button id="enter">Enter</button>
+	</div>
 	
 	<button id="mute" onClick="toggleMute()"><img style="width:16px; height:16px;" src="images/unmute.png"></img></button>
 </body>

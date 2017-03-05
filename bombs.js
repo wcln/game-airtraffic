@@ -1,73 +1,188 @@
 /**
  * BCLearningNetwork.com
- * Air Traffic Controller
+ * Air Traffic
  * @author Colin Bernard
  * March 2017
  */
 
 //////////////////// VARIABLES
+
+// settings (may be changed)
+var PLANE_MIN_SPEED = 2;
+var PLANE_MAX_SPEED = 2;
+
+
+
 var mute = false;
+var manifest;
+var preload;
+var progressText;
+var startText;
+var scoreText;
+var plane;
+
+var userInput;
+
+var gameStarted = false;
+
+var score = 0;
+
+// constants (set in init function)
+var STAGE_WIDTH;
+var STAGE_HEIGHT;
+
+
+// plane object
+var planeObject = new Object();
+
+
 
 /**
  * Handles initialization of game components
  * Called from HTML body onload.
  */
 function init() {
+	// set constants
+	STAGE_WIDTH = document.getElementById("gameCanvas").getAttribute("width");
+	STAGE_HEIGHT = document.getElementById("gameCanvas").getAttribute("height");
+
+	// init state object
 	stage = new createjs.Stage("gameCanvas"); // canvas id is gameCanvas
 	stage.mouseEventsEnabled = true;
 	stage.enableMouseOver(); // Default, checks the mouse 20 times/second for hovering cursor changes
-	canvas = document.getElementById("gameCanvas");
 
-	loadImages(); // load all sprites from sheet
-	loadSounds();
-	initActionListeners(); // load action listeners for sprites
+	userInput = document.getElementById("overlayed").firstElementChild; // userInput.value gets value of input textbox
+
+	// add loading progress text (used by preload)
+	progressText = new createjs.Text("", "20px Arial", "#000000");
+	progressText.x = 300 - progressText.getMeasuredWidth() / 2;
+	progressText.y = 20;
+	stage.addChild(progressText);
+	stage.update();
+
+	setupManifest(); // preloadJS
+	startPreload();
 	stage.update(); 
-
-	//ticker calls update function, set the FPS
-	createjs.Ticker.setFPS(30);
-	createjs.Ticker.addEventListener("tick", update); // call update function
 }
 
 /*
  * Main update function
  */
-function update(event) {
+function tick(event) {
+	if (gameStarted) {
+
+		planeObject.bitmap.x += planeObject.speed; // move the plane to the right
+		planeObject.label.x = planeObject.bitmap.x + planeObject.width/2 - planeObject.label.getMeasuredWidth()/2; // center label over plane
+
+
+		if (planeObject.bitmap.x > STAGE_WIDTH) {
+			planeObject.bitmap.x = -planeObject.width;
+		}
+
+
+
+
+
+
+
+
+	
+	}
 	stage.update(event);
-
 }
 
-/**
- * Loads sound files using SoundJS
- */
-function loadSounds() {
-	if (!createjs.Sound.initializeDefaultPlugins()) { return; }
+//////////////////////////////////////////////////////////////////////////// PRELOADJS FUNCTIONS
 
-	var audioPath = "sounds/";
-	// var sounds = [
-	// 	{id:"hit", src:"hit.mp3"},
-	// 	{id:"miss", src:"miss.mp3"},
-	// 	{id:"win", src:"win.wav"},
-	// 	{id:"lose", src:"lose.wav"},
-	// 	{id:"click", src:"click.wav"}
-	// ];
+function setupManifest() {
+	manifest= [{
+		src: "images/plane.png",
+		id: "plane"
+	}];
+}
 
-	// createjs.Sound.alternateExtensions = ["mp3"];
-	// createjs.Sound.registerSounds(sounds, audioPath);
+function startPreload() {
+	preload = new createjs.LoadQueue(true);
+    preload.installPlugin(createjs.Sound);          
+    preload.on("fileload", handleFileLoad);
+    preload.on("progress", handleFileProgress);
+    preload.on("complete", loadComplete);
+    preload.on("error", loadError);
+    preload.loadManifest(manifest);
+}
+
+function handleFileLoad(event) {
+    console.log("A file has loaded of type: " + event.item.type);
+    // create bitmaps of images
+   	if (event.item.id == "plane") {
+   		plane = new createjs.Bitmap(event.result);
+   	}
+}
+
+function loadError(evt) {
+    console.log("Error!",evt.text);
+}
+
+function handleFileProgress(event) {
+    progressText.text = (preload.progress*100|0) + " % Loaded";
+    stage.update();
+}
+
+function loadComplete(event) {
+    console.log("Finished Loading Assets");
+
+    // display start screen
+    startText = new createjs.Text("Click To Start", "50px Arial");
+    startText.x = STAGE_WIDTH/2 - startText.getMeasuredWidth()/2;
+    startText.y = STAGE_HEIGHT/2 - startText.getMeasuredHeight()/2;
+    stage.addChild(startText);
+    stage.update();
+    stage.on("stagemousedown", startGame, null, false);
+}
+
+//////////////////////////////////////////////////////////////////////////////// END PRELOADJS FUNCTIONS
+
+function startGame(event) {
+	event.remove();
+	//ticker calls update function, set the FPS
+	createjs.Ticker.setFPS(30);
+	createjs.Ticker.addEventListener("tick", tick); // call tick function
+	createjs.Tween.get(startText)
+		.to({x:-500},500) // remove start text from visible canvas
+		.call(initGraphics);
+	stage.removeChild(progressText);
 }
 
 /*
- * Load and set initial position of all images.
+ * Adds images to stage and sets initial position.
  */
-function loadImages() {
+function initGraphics() {
+	setupPlanes();
 
+	// score text
+	scoreText = new createjs.Text("Score: " + score, "20px Arial", "#000000");
+	scoreText.x = STAGE_WIDTH - scoreText.getMeasuredWidth() - 10;
+	scoreText.y = 10;
+	stage.addChild(scoreText);
+
+
+	// once everything added...
+	gameStarted = true;
 }
 
-/*
- * Initialize sprite action listeners.
- */
-function loadActionListeners() {
-
+function setupPlanes() {
+	planeObject.bitmap = plane;
+	planeObject.width = plane.getBounds().width;
+	planeObject.height = plane.getBounds().height;
+	planeObject.bitmap.x = 0;
+	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
+	planeObject.question = "\u221A64";
+	planeObject.speed = Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED;
+	planeObject.label = new createjs.Text(planeObject.question, "14px Arial", "#000000");
+	planeObject.label.y = planeObject.bitmap.y - planeObject.label.getMeasuredHeight();
+	stage.addChild(planeObject.label);
+	stage.addChild(planeObject.bitmap);
 }
+
 
 /*
  * Toggles mute variable. Called from HTML button.
