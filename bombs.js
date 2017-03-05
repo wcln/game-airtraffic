@@ -8,9 +8,10 @@
 //////////////////// VARIABLES
 
 // settings (may be changed)
-var PLANE_MIN_SPEED = 2;
-var PLANE_MAX_SPEED = 2;
-
+var PLANE_MIN_SPEED = 1;
+var PLANE_MAX_SPEED = 2.2;
+var PLANE_FLY_AWAY_SPEED = 15;
+var FPS = 40;
 
 
 var mute = false;
@@ -19,11 +20,14 @@ var preload;
 var progressText;
 var startText;
 var scoreText;
-var plane;
+var planeImages = [];
 
-var userInput;
+var userInput; // user input text box
 
 var gameStarted = false;
+
+var currentAnswer = 8;
+
 
 var score = 0;
 
@@ -52,6 +56,7 @@ function init() {
 	stage.enableMouseOver(); // Default, checks the mouse 20 times/second for hovering cursor changes
 
 	userInput = document.getElementById("overlayed").firstElementChild; // userInput.value gets value of input textbox
+	document.getElementById("enter").onclick = enterPressed;
 
 	// add loading progress text (used by preload)
 	progressText = new createjs.Text("", "20px Arial", "#000000");
@@ -76,9 +81,16 @@ function tick(event) {
 
 
 		if (planeObject.bitmap.x > STAGE_WIDTH) {
-			planeObject.bitmap.x = -planeObject.width;
-		}
 
+
+			if (!planeObject.solved) { // if the plane left the screen without the question being solved
+				updateScore(-100);
+			}
+
+			planeObject.bitmap.x = -planeObject.width;
+			setupPlanes();
+
+		}
 
 
 
@@ -114,7 +126,7 @@ function handleFileLoad(event) {
     console.log("A file has loaded of type: " + event.item.type);
     // create bitmaps of images
    	if (event.item.id == "plane") {
-   		plane = new createjs.Bitmap(event.result);
+   		planeImages[0] = new createjs.Bitmap(event.result);
    	}
 }
 
@@ -144,7 +156,7 @@ function loadComplete(event) {
 function startGame(event) {
 	event.remove();
 	//ticker calls update function, set the FPS
-	createjs.Ticker.setFPS(30);
+	createjs.Ticker.setFPS(FPS);
 	createjs.Ticker.addEventListener("tick", tick); // call tick function
 	createjs.Tween.get(startText)
 		.to({x:-500},500) // remove start text from visible canvas
@@ -170,17 +182,43 @@ function initGraphics() {
 }
 
 function setupPlanes() {
-	planeObject.bitmap = plane;
-	planeObject.width = plane.getBounds().width;
-	planeObject.height = plane.getBounds().height;
+	planeObject.bitmap = planeImages[0];
+	planeObject.width = planeImages[0].getBounds().width;
+	planeObject.height = planeImages[0].getBounds().height;
 	planeObject.bitmap.x = 0;
 	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
 	planeObject.question = "\u221A64";
+	planeObject.solved = false; // has the question been solved yet?
 	planeObject.speed = Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED;
-	planeObject.label = new createjs.Text(planeObject.question, "14px Arial", "#000000");
+	planeObject.label = new createjs.Text(planeObject.question, "20px Arial", "#000000");
 	planeObject.label.y = planeObject.bitmap.y - planeObject.label.getMeasuredHeight();
 	stage.addChild(planeObject.label);
 	stage.addChild(planeObject.bitmap);
+}
+
+/*
+ * Enter button is pressed
+ */
+function enterPressed() {
+	if (parseInt(userInput.value) == currentAnswer) {
+		var currentX = planeObject.bitmap.x;
+		console.log(currentX);
+		updateScore(100);
+		stage.removeChild(planeObject.label);
+		planeObject.speed = PLANE_FLY_AWAY_SPEED;
+	} else {
+		updateScore(-50);
+
+	}
+}
+
+/*
+ * Updates game score (including displayed text)
+ */
+function updateScore(amount) {
+	score += amount;
+	scoreText.text = "Score: " + score;
+	scoreText.x = STAGE_WIDTH - scoreText.getMeasuredWidth() - 10;
 }
 
 
