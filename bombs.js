@@ -94,11 +94,11 @@ function init() {
 function tick(event) {
 	if (gameStarted) {
 
-		planeObject.bitmap.x += planeObject.speed; // move the plane to the right
+		planeObject.bitmap.x -= planeObject.speed; // move the plane to the left
 		planeObject.label.x = planeObject.bitmap.x + planeObject.width/2 - planeObject.label.getMeasuredWidth()/2; // center label over plane
 
 
-		if (planeObject.bitmap.x > STAGE_WIDTH) {
+		if (planeObject.bitmap.x < 0) {
 
 
 			if (!planeObject.solved) { // if the plane left the screen without the question being solved
@@ -107,7 +107,7 @@ function tick(event) {
 
 			if (questionCounter < questions.length - 1) {
 				questionCounter++;
-				planeObject.bitmap.x = -planeObject.width;
+				planeObject.bitmap.x = STAGE_WIDTH;
 				setupPlanes();
 
 			} else { // no more questions... game is over
@@ -216,7 +216,7 @@ function setupPlanes() {
 	planeObject.bitmap = planeImages[0];
 	planeObject.width = planeImages[0].getBounds().width;
 	planeObject.height = planeImages[0].getBounds().height;
-	planeObject.bitmap.x = 0;
+	planeObject.bitmap.x = STAGE_WIDTH;
 	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
 	planeObject.question = questions[questionCounter];
 	planeObject.solved = false; // has the question been solved yet?
