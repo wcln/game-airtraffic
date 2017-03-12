@@ -17,11 +17,16 @@ var answers = [8, 9, 5, 81];
 var PLANE_MIN_SPEED = 1;
 var PLANE_MAX_SPEED = 2.2;
 var PLANE_FLY_AWAY_SPEED = 15;
+var MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN = 6000; // 6 seconds
+var MIN_TIME_BETWEEN_LANDING_PLANE_SPAWN = 1000; // 1 second
 var FPS = 40;
 
 // unicode characters
 var EXPONENT_2 = "\u00B2";
 var SQUARE_ROOT = "\u221A";
+
+
+var lastPlaneSpawnedTime;
 
 var mute = false;
 var manifest;
@@ -33,6 +38,7 @@ var planeImages = []; // array of all the possible plane images
 var questionCounter;
 
 var userInput; // user input text box
+var questionElement; // selected question
 
 var gameStarted = false;
 
@@ -45,6 +51,7 @@ var STAGE_HEIGHT;
 
 var landingPlanes = []; // array of all the plane objects which spawn in the sky and want to land
 var takeoffPlanes = []; // array of all the plane objects which spawn on the ship and want to take off
+var selectedPlane;
 
 // plane object
 var planeObject = new Object();
@@ -52,7 +59,6 @@ var planeObject = new Object();
 var graphics = new createjs.Graphics(); // init graphics object used for drawing selected rectangles
 graphics.setStrokeStyle(1);
 var box;
-
 
 
 /**
@@ -72,6 +78,7 @@ function init() {
 	questionCounter = 0;
 
 	userInput = document.getElementById("user-input"); // userInput.value gets value of input textbox
+	questionElement = document.getElementById("question"); // the question <p> element
 	userInput.onclick = clearTextbox; // clears the contents of the textbox if user clicks on it
 	userInput.onkeydown = function(e) { // check if enter key is pressed on textbox
 		if (e.keyCode == 13) {
@@ -99,18 +106,22 @@ function tick(event) {
 	if (gameStarted) {
 
 		if (box != null) {
-			box.x -= planeObject.speed;
+			box.x -= landingPlanes[questionCounter].speed;
 		}
 
-		planeObject.bitmap.x -= planeObject.speed; // move the plane to the left
-		planeObject.label.x = planeObject.bitmap.x + planeObject.width/2 - planeObject.label.getMeasuredWidth()/2; // center label over plane
+		landingPlanes[questionCounter].bitmap.x -= landingPlanes[questionCounter].speed; // move the plane to the left
+		landingPlanes[questionCounter].label.x = landingPlanes[questionCounter].bitmap.x + landingPlanes[questionCounter].width/2 - landingPlanes[questionCounter].label.getMeasuredWidth()/2; // center label over plane
 
 
-		if (planeObject.bitmap.x + planeObject.width < 0) {
+		
+		
+		if (landingPlanes[questionCounter].bitmap.x + landingPlanes[questionCounter].width < 0) {
 
-			if (!planeObject.solved) { // if the plane left the screen without the question being solved
+			if (!landingPlanes[questionCounter].solved) { // if the plane left the screen without the question being solved
 				updateScore(-100);
-				stage.removeChild(planeObject.label);
+				stage.removeChild(landingPlanes[questionCounter].label);
+				resetSelectedPlane();
+
 			}
 
 			if (questionCounter < questions.length - 1) {
@@ -195,6 +206,7 @@ function startGame(event) {
 		.to({x:-500},500) // remove start text from visible canvas
 		.call(initGraphics);
 	stage.removeChild(progressText);
+	lastPlaneSpawnedTime = MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN; // spawn a plane immediately
 }
 
 function endGame() {
@@ -220,47 +232,56 @@ function initGraphics() {
 	gameStarted = true;
 }
 
+/*
+ * Initialize array of planes with plane objects.
+ */
 function setupPlanes() {
 
-	planeObject.bitmap = planeImages[0]; // set image
 
-	// set size and positioning
-	planeObject.width = planeImages[0].getBounds().width;
-	planeObject.height = planeImages[0].getBounds().height;
-	planeObject.bitmap.x = STAGE_WIDTH;
-	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
+	for (var i = 0; i < questions.length; i++) {
+		landingPlanes.push({
+			bitmap: Object.create(planeImages[0]), // create a new instance of the plane image
+			width: planeImages[0].getBounds().width,
+			height: planeImages[0].getBounds().height,
+			question: questions[i],
+			answer: answers[i],
+			solved: false,
+			speed: Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED,
+			label: new createjs.Text(questions[i], "20px Arial", "#000000")
+		});
 
-	// settings/attributes
-	planeObject.question = questions[questionCounter];
-	planeObject.solved = false; // has the question been solved yet?
-	planeObject.speed = Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED;
+		landingPlanes[i].bitmap.name = i; // store the id in the bitmap name so that listener can identity this object
 
-	// label
-	planeObject.label = new createjs.Text(planeObject.question, "20px Arial", "#000000");
-	planeObject.label.x = STAGE_WIDTH; // this will be updated later in tick function
-	planeObject.label.y = planeObject.bitmap.y - planeObject.label.getMeasuredHeight(); // this will not be updated later
+		landingPlanes[i].bitmap.x = STAGE_WIDTH;
+		landingPlanes[i].bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
+		landingPlanes[i].label.x = STAGE_WIDTH;
+		landingPlanes[i].label.y = landingPlanes[i].bitmap.y - landingPlanes[i].label.getMeasuredHeight(); // this will not be updated later
 
-	// add click listener (user clicks on a plane)
-	planeObject.bitmap.on("click", function Timmy() {
 
-		if (box != null) {
-			stage.removeChild(box); // remove box if there is previously one
-		}
+		landingPlanes[i].bitmap.on("click", function Timmy(event) {
+			if (box != null) {
+				stage.removeChild(box); // remove box if there is previously one
+			}
 
-		// add selection box around the plane
-		box = new createjs.Shape();
-		box.graphics.setStrokeDash([2,2]);
-		box.graphics.beginStroke("red").drawRect(planeObject.bitmap.x - 10, planeObject.bitmap.y - 10, planeObject.width + 20, planeObject.height + 20);
-		stage.addChild(box);
+			var id = event.target.name;
 
-		// update HTML question <p>
-		document.getElementById("question").innerHTML = planeObject.question + " = ";
-	});
-	planeObject.mouseEnabled = true;
+			// add selection box around the plane
+			box = new createjs.Shape();
+			box.graphics.setStrokeDash([2,2]);
+			box.graphics.beginStroke("red").drawRect(landingPlanes[id].bitmap.x - 10, landingPlanes[id].bitmap.y - 10, landingPlanes[id].width + 20, landingPlanes[id].height + 20);
+			stage.addChild(box);
 
-	// add to stage
-	stage.addChild(planeObject.label);
-	stage.addChild(planeObject.bitmap);
+			selectedPlane = landingPlanes[id]; // set this planeObject as the selected plane
+
+			// update HTML question <p>
+			document.getElementById("question").innerHTML = landingPlanes[id].question + " = ";
+		});
+		landingPlanes[i].mouseEnabled = true;
+
+		// add to stage
+		stage.addChild(landingPlanes[i].bitmap);
+		stage.addChild(landingPlanes[i].label);
+	}
 }
 
 
@@ -269,14 +290,17 @@ function setupPlanes() {
  */
 function enterPressed() {
 
-	if (parseInt(userInput.value) == answers[questionCounter]) { // correct answer
+	if (selectedPlane == null) { // no plane is selected
+		alert("Please select (click) on a plane!");
+	} else {
+		if (parseInt(userInput.value) == selectedPlane.answer) { // correct answer
 
 		updateScore(100);
-		stage.removeChild(planeObject.label);
+		stage.removeChild(landingPlanes[questionCounter].label);
 		stage.removeChild(box);
 		//planeObject.speed = PLANE_FLY_AWAY_SPEED;
-		planeObject.solved = true;
-		land(planeObject); // animation of the plane landing
+		landingPlanes[questionCounter].solved = true;
+		land(landingPlanes[questionCounter]); // animation of the plane landing
 
 	} else { // wrong answer
 		updateScore(-50);
@@ -285,6 +309,9 @@ function enterPressed() {
 
 	
 	clearTextbox(); // clear the user input field
+	}
+
+
 }
 
 /*
@@ -303,8 +330,21 @@ function land(plane) {
 		})
 		.to({x:STAGE_WIDTH/2 - 200, y:440}, 3000) // decelerate plane for landing in increments
 		.to({x:STAGE_WIDTH/2 - 100, y:450}, 1000)
-		.to({x:STAGE_WIDTH/2, y: 460}, 1000);
+		.to({x:STAGE_WIDTH/2, y: 460}, 1000)
+		.to({alpha:0}, 1000) // fade plane out
+		.call(function() {
+			stage.removeChild(plane.bitmap); // remove plane from stage
+		});
 	
+	resetSelectedPlane();
+}
+
+/*
+ * Sets no plane selected.
+ */
+function resetSelectedPlane() {
+	selectedPlane = null;
+	questionElement.innerHTML = "";
 }
 
 /*
