@@ -39,6 +39,7 @@ var mute = false;
 var gameStarted = false;
 var score = 0;
 var scoreText;
+var alertText; // alerts the player
 
 // constants (set in init function)
 var STAGE_WIDTH;
@@ -345,8 +346,10 @@ function setupTakingOffPlane(plane) {
 function enterPressed() {
 	if (gameStarted) {
 		if (selectedPlane == null) { // no plane is selected
-			alert("Please select (click) on a plane!");
-		} else {
+			
+			sendAlertMessage("Please select (click) on a plane!");
+
+		} else if (numberOfPlanesTakingOff == 0 || selectedPlane.takingOff) {
 			if (parseInt(userInput.value) == selectedPlane.answer) { // correct answer
 
 				updateScore(100);
@@ -366,22 +369,39 @@ function enterPressed() {
 
 			}
 			clearTextbox(); // clear the user input field
+
+		} else { // if there is a plane on the runway
+			sendAlertMessage("Alert! Runway is obstructed!");
 		}
 	}
+}
+
+/*
+ * Sends an alert to the user as a createjs text.
+ */
+function sendAlertMessage(message) {
+	if (alertText != null) { stage.removeChild(alertText); }
+	alertText = new createjs.Text(message, "16px Arial", "red");
+	alertText.x = STAGE_WIDTH/2 - alertText.getMeasuredWidth()/2;
+	alertText.y = 600;
+	stage.addChild(alertText);
+
+	setTimeout( function() {
+		stage.removeChild(alertText);
+	}, 3000); // alert stays for 3 seconds
 }
 
 /*
  * Animation of plane taking off from the runway.
  */
 function takeOff(plane) {
-
+	numberOfPlanesTakingOff--;
 	createjs.Tween.get(plane.bitmap)
 		.to({x:plane.bitmap.x + 150, rotation: -20}, 1700) // go down runway
 		.to({x:plane.bitmap.x + 1000, y:plane.bitmap.y - 500}, 6000) // lift off
 		.call( function() {
 			stage.removeChild(plane.bitmap);
 			plane.takingOff = false;
-			numberOfPlanesTakingOff--;
 		});
 
 	resetSelectedPlane();
