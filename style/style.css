@@ -1,4 +1,9 @@
 /* the game canvas */
+
+* {
+	font-family: "Lato", "Arial";
+}
+
 canvas {
 	border: 1px solid #d3d3d3;
 	background-color: #ffffff;
@@ -24,13 +29,21 @@ canvas {
 	left: 225px;
 	right: 225px;
 	bottom: 0;
-	width: 200px;
+	width: 160px;
 	height: 25px;
 	margin: auto;
-	/*background-color: green;*/
+	background-color: blue;
+	border: 2px solid black;
+	padding: 15px;
+}
+
+#overlayed #container {
+	float: right;
 }
 
 /* the question p element */
 #question {
 	display: inline;
+	width: 30px;
+	color: white;
 }

@@ -33,6 +33,7 @@ var startText;
 // HTML elements
 var userInput; // user input text box
 var questionElement; // selected question
+var overlayedDiv; // the overlayed div which contains the above elements
 var mute = false;
 
 // utility
@@ -40,6 +41,7 @@ var gameStarted = false;
 var score = 0;
 var scoreText;
 var alertText; // alerts the player
+var background; // the background image
 
 // constants (set in init function)
 var STAGE_WIDTH;
@@ -80,6 +82,8 @@ function init() {
 	questionCounter = 0;
 	score = 0; // reset score
 
+	overlayedDiv = document.getElementById("overlayed"); // the div which contains the overlayed elements
+	overlayedDiv.style.visibility = "hidden";
 	userInput = document.getElementById("user-input"); // userInput.value gets value of input textbox
 	questionElement = document.getElementById("question"); // the question <p> element
 	userInput.onclick = clearTextbox; // clears the contents of the textbox if user clicks on it
@@ -91,14 +95,15 @@ function init() {
 	document.getElementById("enter").onclick = enterPressed;
 
 	// add loading progress text (used by preload)
-	progressText = new createjs.Text("", "20px Arial", "#000000");
+	progressText = new createjs.Text("", "20px Lato", "black");
 	progressText.x = STAGE_WIDTH/2 - progressText.getMeasuredWidth() / 2;
 	progressText.y = 20;
-	stage.addChild(progressText);
+	//stage.addChild(progressText);
 	stage.update();
 
 	setupManifest(); // preloadJS
 	startPreload();
+
 	stage.update(); 
 }
 
@@ -106,6 +111,7 @@ function init() {
  * Main update function
  */
 function tick(event) {
+
 	if (gameStarted) {
 
 		// spawn a new plane
@@ -150,7 +156,7 @@ function tick(event) {
 		}
 
 		// update selected box position
-		if (box != null && selectedPlane.flying) {
+		if (box != null && selectedPlane != null && selectedPlane.flying) {
 			box.x -= selectedPlane.speed;
 		}
 	
@@ -170,7 +176,12 @@ function setupManifest() {
 	manifest= [{
 		src: "images/plane.png",
 		id: "plane"
-	}];
+	},
+	{
+		src: "images/background.png",
+		id: "background"
+	}
+	];
 }
 
 function startPreload() {
@@ -188,6 +199,9 @@ function handleFileLoad(event) {
     // create bitmaps of images
    	if (event.item.id == "plane") {
    		planeImages[0] = new createjs.Bitmap(event.result);
+   	} else if (event.item.id == "background") {
+   		background = new createjs.Bitmap(event.result);
+   		stage.addChild(background);
    	}
 }
 
@@ -208,7 +222,7 @@ function loadComplete(event) {
     console.log("Finished Loading Assets");
 
     // display start screen
-    startText = new createjs.Text("Click To Start", "50px Arial");
+    startText = new createjs.Text("Click To Start", "50px Lato", "black");
     startText.x = STAGE_WIDTH/2 - startText.getMeasuredWidth()/2;
     startText.y = STAGE_HEIGHT/2 - startText.getMeasuredHeight()/2;
     stage.addChild(startText);
@@ -231,15 +245,21 @@ function startGame(event) {
 		.call(initGraphics);
 	stage.removeChild(progressText);
 	lastPlaneSpawnedTime = MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN; // spawn a plane immediately
+
+	overlayedDiv.style.visibility = "visible";
 }
 
 /*
  * Displays the end game screen.
  */
 function endGame() {
+
+	overlayedDiv.style.visibility = "hidden";
+
+
 	gameStarted = false;
-	var gameOverText = new createjs.Text("Game Over! Score: " + score, "50px Arial");
-	var playAgainText = new createjs.Text("Click to play again", "40px Arial");
+	var gameOverText = new createjs.Text("Game Over! Score: " + score, "50px Lato", "white");
+	var playAgainText = new createjs.Text("Click to play again", "40px Lato", "white");
     gameOverText.x = STAGE_WIDTH/2 - gameOverText.getMeasuredWidth()/2;
     gameOverText.y = STAGE_HEIGHT/2 - gameOverText.getMeasuredHeight()/2;
     playAgainText.x = STAGE_WIDTH/2 - playAgainText.getMeasuredWidth()/2;
@@ -247,7 +267,9 @@ function endGame() {
 	stage.addChild(gameOverText);
 	stage.addChild(playAgainText);
 	stage.update();
-	stage.on("stagemousedown", init);
+	stage.on("stagemousedown", function() {
+		location.reload(); // for now just reload the document
+	});
 }
 
 /*
@@ -257,7 +279,7 @@ function initGraphics() {
 	setupPlanes();
 
 	// score text
-	scoreText = new createjs.Text("Score: " + score, "20px Arial", "#000000");
+	scoreText = new createjs.Text("Score: " + score, "20px Lato", "#000000");
 	scoreText.x = STAGE_WIDTH - scoreText.getMeasuredWidth() - 10;
 	scoreText.y = 10;
 	stage.addChild(scoreText);
@@ -284,7 +306,7 @@ function setupPlanes() {
 			flying: false, // should the plane be updated by tick method
 			takingOff: false, // is the plane taking off? (set to true if plane spawns on runway)
 			speed: Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED,
-			label: new createjs.Text(questions[i], "20px Arial", "#000000")
+			label: new createjs.Text(questions[i], "20px Lato", "#000000")
 		});
 
 		landingPlanes[i].bitmap.name = i; // store the id in the bitmap name so that listener can identity this object
@@ -381,7 +403,7 @@ function enterPressed() {
  */
 function sendAlertMessage(message) {
 	if (alertText != null) { stage.removeChild(alertText); }
-	alertText = new createjs.Text(message, "16px Arial", "red");
+	alertText = new createjs.Text(message, "16px Lato", "red");
 	alertText.x = STAGE_WIDTH/2 - alertText.getMeasuredWidth()/2;
 	alertText.y = 600;
 	stage.addChild(alertText);
@@ -437,7 +459,7 @@ function land(plane) {
  * Sets no plane selected.
  */
 function resetSelectedPlane() {
-	//selectedPlane = null;
+	selectedPlane = null;
 	questionElement.innerHTML = "";
 }
 

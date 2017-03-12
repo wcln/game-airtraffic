@@ -2,6 +2,8 @@
 <html>
 <head>
 <title>Air Traffic</title>
+<meta charset="utf-8"/>
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Lato">
 <link rel="stylesheet" type="text/css" href="style/style.css"/>
 <link rel="shortcut icon" href="images/favicon.ico"/>
 <script src="https://code.createjs.com/easeljs-0.8.2.min.js"></script>
@@ -17,9 +19,11 @@
 
 	</canvas>
 	<div id="overlayed">
-		<p id="question"></p>
-		<input type="text" name="user" value="" size="1" id="user-input">
-		<button id="enter">Enter</button>
+		<div id="container">
+			<p id="question"></p>
+			<input type="text" name="user" value="" size="1" id="user-input">
+			<button id="enter">Enter</button>
+		</div>
 	</div>
 	
 	<button id="mute" onClick="toggleMute()"><img style="width:16px; height:16px;" src="images/unmute.png"></img></button>
