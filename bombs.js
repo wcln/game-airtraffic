@@ -43,11 +43,15 @@ var score = 0;
 var STAGE_WIDTH;
 var STAGE_HEIGHT;
 
-var planesArray = []; // array of all the plane objects
-
+var landingPlanes = []; // array of all the plane objects which spawn in the sky and want to land
+var takeoffPlanes = []; // array of all the plane objects which spawn on the ship and want to take off
 
 // plane object
 var planeObject = new Object();
+
+var graphics = new createjs.Graphics(); // init graphics object used for drawing selected rectangles
+graphics.setStrokeStyle(1);
+var box;
 
 
 
@@ -67,7 +71,7 @@ function init() {
 
 	questionCounter = 0;
 
-	userInput = document.getElementById("overlayed").firstElementChild; // userInput.value gets value of input textbox
+	userInput = document.getElementById("user-input"); // userInput.value gets value of input textbox
 	userInput.onclick = clearTextbox; // clears the contents of the textbox if user clicks on it
 	userInput.onkeydown = function(e) { // check if enter key is pressed on textbox
 		if (e.keyCode == 13) {
@@ -94,25 +98,29 @@ function init() {
 function tick(event) {
 	if (gameStarted) {
 
+		if (box != null) {
+			box.x -= planeObject.speed;
+		}
+
 		planeObject.bitmap.x -= planeObject.speed; // move the plane to the left
 		planeObject.label.x = planeObject.bitmap.x + planeObject.width/2 - planeObject.label.getMeasuredWidth()/2; // center label over plane
 
 
-		if (planeObject.bitmap.x < 0) {
-
+		if (planeObject.bitmap.x + planeObject.width < 0) {
 
 			if (!planeObject.solved) { // if the plane left the screen without the question being solved
 				updateScore(-100);
+				stage.removeChild(planeObject.label);
 			}
 
 			if (questionCounter < questions.length - 1) {
 				questionCounter++;
-				planeObject.bitmap.x = STAGE_WIDTH;
-				setupPlanes();
+				//planeObject.bitmap.x = STAGE_WIDTH;
+				//setupPlanes();
 
 			} else { // no more questions... game is over
 
-				endGame();
+				//endGame();
 
 			}
 		}
@@ -213,19 +221,48 @@ function initGraphics() {
 }
 
 function setupPlanes() {
-	planeObject.bitmap = planeImages[0];
+
+	planeObject.bitmap = planeImages[0]; // set image
+
+	// set size and positioning
 	planeObject.width = planeImages[0].getBounds().width;
 	planeObject.height = planeImages[0].getBounds().height;
 	planeObject.bitmap.x = STAGE_WIDTH;
 	planeObject.bitmap.y = Math.floor(Math.random() * 300) + 50; // between 50 and 300
+
+	// settings/attributes
 	planeObject.question = questions[questionCounter];
 	planeObject.solved = false; // has the question been solved yet?
 	planeObject.speed = Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED;
+
+	// label
 	planeObject.label = new createjs.Text(planeObject.question, "20px Arial", "#000000");
-	planeObject.label.y = planeObject.bitmap.y - planeObject.label.getMeasuredHeight();
+	planeObject.label.x = STAGE_WIDTH; // this will be updated later in tick function
+	planeObject.label.y = planeObject.bitmap.y - planeObject.label.getMeasuredHeight(); // this will not be updated later
+
+	// add click listener (user clicks on a plane)
+	planeObject.bitmap.on("click", function Timmy() {
+
+		if (box != null) {
+			stage.removeChild(box); // remove box if there is previously one
+		}
+
+		// add selection box around the plane
+		box = new createjs.Shape();
+		box.graphics.setStrokeDash([2,2]);
+		box.graphics.beginStroke("red").drawRect(planeObject.bitmap.x - 10, planeObject.bitmap.y - 10, planeObject.width + 20, planeObject.height + 20);
+		stage.addChild(box);
+
+		// update HTML question <p>
+		document.getElementById("question").innerHTML = planeObject.question + " = ";
+	});
+	planeObject.mouseEnabled = true;
+
+	// add to stage
 	stage.addChild(planeObject.label);
 	stage.addChild(planeObject.bitmap);
 }
+
 
 /*
  * Enter button is pressed
@@ -233,18 +270,41 @@ function setupPlanes() {
 function enterPressed() {
 
 	if (parseInt(userInput.value) == answers[questionCounter]) { // correct answer
-		var currentX = planeObject.bitmap.x;
+
 		updateScore(100);
 		stage.removeChild(planeObject.label);
-		planeObject.speed = PLANE_FLY_AWAY_SPEED;
+		stage.removeChild(box);
+		//planeObject.speed = PLANE_FLY_AWAY_SPEED;
 		planeObject.solved = true;
+		land(planeObject); // animation of the plane landing
+
 	} else { // wrong answer
 		updateScore(-50);
 
 	}
 
 	
-	clearTextbox();
+	clearTextbox(); // clear the user input field
+}
+
+/*
+ * Animation of plane landing on the ship.
+ * @param plane: the plane object
+ */
+function land(plane) {
+	plane.speed = 0; // set plane speed to 0 since we will be suing TweenJS for this, not the tick function
+
+	createjs.Tween.get(plane.bitmap)
+		.to({x:plane.bitmap.x - 1000, y:400}, 3500) // send plane off to left of screen
+		.call(function() {
+			plane.bitmap.regX = plane.width/2;
+			plane.bitmap.regY = plane.height/2;
+			plane.bitmap.scaleX = -1; // flip plane horizontally for landing
+		})
+		.to({x:STAGE_WIDTH/2 - 200, y:440}, 3000) // decelerate plane for landing in increments
+		.to({x:STAGE_WIDTH/2 - 100, y:450}, 1000)
+		.to({x:STAGE_WIDTH/2, y: 460}, 1000);
+	
 }
 
 /*

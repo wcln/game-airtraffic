@@ -24,8 +24,13 @@ canvas {
 	left: 225px;
 	right: 225px;
 	bottom: 0;
-	width: 147px;
+	width: 200px;
 	height: 25px;
 	margin: auto;
 	/*background-color: green;*/
+}
+
+/* the question p element */
+#question {
+	display: inline;
 }
