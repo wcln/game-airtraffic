@@ -12,13 +12,13 @@ var EXPONENT_2 = "\u00B2";
 var SQUARE_ROOT = "\u221A";
 
 ///////////////// THESE SETTINGS MAY BE CHANGED WITHOUT TOO MUCH CONSEQUENCE ///////////////////////////////
-var questions =  [SQUARE_ROOT+"64", SQUARE_ROOT+"81", SQUARE_ROOT+"25", "9"+EXPONENT_2];
-var answers = [8, 9, 5, 81];
+var questions =  [SQUARE_ROOT+"64", SQUARE_ROOT+"81", SQUARE_ROOT+"25", "9"+EXPONENT_2, SQUARE_ROOT+"16", SQUARE_ROOT+"9", SQUARE_ROOT+"49", "10"+EXPONENT_2, "2"+EXPONENT_2, "6"+EXPONENT_2, "11"+EXPONENT_2, SQUARE_ROOT+"36", "5"+EXPONENT_2, SQUARE_ROOT+"4"];
+var answers = [8, 9, 5, 81, 4, 3, 7, 100, 4, 36, 121, 6, 25, 2];
 var PLANE_MIN_SPEED = 1;
 var PLANE_MAX_SPEED = 2.2;
 var PLANE_FLY_AWAY_SPEED = 15;
-var MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN = 6000; // 6 seconds
-var MIN_TIME_BETWEEN_LANDING_PLANE_SPAWN = 1000; // 1 second
+var MAX_TIME_BETWEEN_PLANE_SPAWN = 8000; // 8 seconds
+var MIN_TIME_BETWEEN_PLANE_SPAWN = 4000; // 4 seconds
 var FPS = 40;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -115,7 +115,7 @@ function tick(event) {
 	if (gameStarted) {
 
 		// spawn a new plane
-		if ((new Date().getTime() - lastPlaneSpawnedTime > Math.floor(Math.random() * MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN) + MIN_TIME_BETWEEN_LANDING_PLANE_SPAWN) && questionCounter + 1 <= questions.length) {
+		if ((new Date().getTime() - lastPlaneSpawnedTime > Math.floor(Math.random() * MAX_TIME_BETWEEN_PLANE_SPAWN) + MIN_TIME_BETWEEN_PLANE_SPAWN) && questionCounter + 1 <= questions.length) {
 			
 			if ((Math.floor(Math.random() * 5) + 1) == 4 && numberOfPlanesTakingOff == 0) { // 1 in 5 chance to spawn a plane on the runway
 				setupTakingOffPlane(landingPlanes[questionCounter]);
@@ -174,12 +174,28 @@ function tick(event) {
 
 function setupManifest() {
 	manifest= [{
-		src: "images/plane.png",
-		id: "plane"
+		src: "images/787.png",
+		id: "787"
 	},
 	{
 		src: "images/background.png",
 		id: "background"
+	},
+	{
+		src: "images/cessna172.png",
+		id: "c172"
+	},
+	{
+		src: "images/cf18.png",
+		id: "cf18"
+	},
+	{
+		src: "images/caravan.png",
+		id: "caravan"
+	},
+	{
+		src: "images/pc12.png",
+		id: "pc12"
 	}
 	];
 }
@@ -197,11 +213,19 @@ function startPreload() {
 function handleFileLoad(event) {
     console.log("A file has loaded of type: " + event.item.type);
     // create bitmaps of images
-   	if (event.item.id == "plane") {
+   	if (event.item.id == "787") {
    		planeImages[0] = new createjs.Bitmap(event.result);
    	} else if (event.item.id == "background") {
    		background = new createjs.Bitmap(event.result);
    		stage.addChild(background);
+   	} else if (event.item.id == "c172") {
+   		planeImages[1] = new createjs.Bitmap(event.result);
+   	} else if (event.item.id == "cf18") {
+   		planeImages[2] = new createjs.Bitmap(event.result);
+   	} else if (event.item.id == "caravan") {
+   		planeImages[3] = new createjs.Bitmap(event.result);
+   	} else if (event.item.id == "pc12") {
+   		planeImages[4] = new createjs.Bitmap(event.result);
    	}
 }
 
@@ -244,7 +268,7 @@ function startGame(event) {
 		.to({x:-500},500) // remove start text from visible canvas
 		.call(initGraphics);
 	stage.removeChild(progressText);
-	lastPlaneSpawnedTime = MAX_TIME_BETWEEN_LANDING_PLANE_SPAWN; // spawn a plane immediately
+	lastPlaneSpawnedTime = MAX_TIME_BETWEEN_PLANE_SPAWN; // spawn a plane immediately
 
 	overlayedDiv.style.visibility = "visible";
 }
@@ -258,8 +282,8 @@ function endGame() {
 
 
 	gameStarted = false;
-	var gameOverText = new createjs.Text("Game Over! Score: " + score, "50px Lato", "white");
-	var playAgainText = new createjs.Text("Click to play again", "40px Lato", "white");
+	var gameOverText = new createjs.Text("Game Complete! Score: " + score, "50px Lato", "black");
+	var playAgainText = new createjs.Text("Click to play again", "40px Lato", "black");
     gameOverText.x = STAGE_WIDTH/2 - gameOverText.getMeasuredWidth()/2;
     gameOverText.y = STAGE_HEIGHT/2 - gameOverText.getMeasuredHeight()/2;
     playAgainText.x = STAGE_WIDTH/2 - playAgainText.getMeasuredWidth()/2;
@@ -276,6 +300,7 @@ function endGame() {
  * Adds images to stage and sets initial position.
  */
 function initGraphics() {
+	shuffle(planeImages); // shuffle the plane images
 	setupPlanes();
 
 	// score text
@@ -294,12 +319,16 @@ function initGraphics() {
  */
 function setupPlanes() {
 
-
+	var imageCounter = 0;
 	for (var i = 0; i < questions.length; i++) {
+		if (imageCounter == planeImages.length) {
+			imageCounter = 0;
+		}
+
 		landingPlanes.push({
-			bitmap: Object.create(planeImages[0]), // create a new instance of the plane image
-			width: planeImages[0].getBounds().width,
-			height: planeImages[0].getBounds().height,
+			bitmap: Object.create(planeImages[imageCounter]), // create a new instance of the plane image
+			width: planeImages[imageCounter].getBounds().width,
+			height: planeImages[imageCounter].getBounds().height,
 			question: questions[i],
 			answer: answers[i],
 			solved: false,
@@ -308,6 +337,8 @@ function setupPlanes() {
 			speed: Math.floor(Math.random() * PLANE_MAX_SPEED) + PLANE_MIN_SPEED,
 			label: new createjs.Text(questions[i], "20px Lato", "#000000")
 		});
+
+		imageCounter++; // keeps track of cycling through the plane images
 
 		landingPlanes[i].bitmap.name = i; // store the id in the bitmap name so that listener can identity this object
 
@@ -351,7 +382,7 @@ function setupTakingOffPlane(plane) {
 	plane.bitmap.alpha = 0; // set plane to not visible
 	plane.takingOff = true;
 	plane.bitmap.x = STAGE_WIDTH/2;
-	plane.bitmap.y = 460;
+	plane.bitmap.y = 520;
 	plane.label.x = plane.bitmap.x + plane.width/2 - plane.label.getMeasuredWidth()/2; // center label over plane
 	plane.label.y = plane.bitmap.y - plane.label.getMeasuredHeight();
 	plane.bitmap.regX = plane.width/2;
@@ -443,10 +474,11 @@ function land(plane) {
 			plane.bitmap.regY = plane.height/2;
 			plane.bitmap.scaleX = -1; // flip plane horizontally for landing
 		})
-		.to({x:STAGE_WIDTH/2 - 200, y:440}, 3000) // decelerate plane for landing in increments
-		.to({x:STAGE_WIDTH/2 - 100, y:450}, 1000)
-		.to({x:STAGE_WIDTH/2, y: 460}, 1000)
-		.to({alpha:0}, 1000) // fade plane out
+		.to({x:STAGE_WIDTH/2 - 200, y:480}, 3000) // decelerate plane for landing in increments
+		.to({x:STAGE_WIDTH/2 - 100, y:500}, 1000)
+		.to({x:STAGE_WIDTH/2, y: 520}, 1000)
+		.to({x:STAGE_WIDTH/2 + 200, alpha:0}, 3000)
+		//.to({alpha:0}, 1000) // fade plane out
 		.call( function() {
 			stage.removeChild(plane.bitmap); // remove plane from stage
 			plane.flying = false; // plane will no longer be updated
@@ -491,4 +523,18 @@ function toggleMute() {
 	} else {
 		document.getElementById("mute").firstElementChild.setAttribute("src", "images/unmute.png");
 	}
+}
+
+/**
+ * Shuffles array in place.
+ * @param {Array} a items The array containing the items.
+ */
+function shuffle(a) {
+    var j, x, i;
+    for (i = a.length; i; i--) {
+        j = Math.floor(Math.random() * i);
+        x = a[i - 1];
+        a[i - 1] = a[j];
+        a[j] = x;
+    }
 }
