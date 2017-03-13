@@ -41,7 +41,9 @@ var gameStarted = false;
 var score = 0;
 var scoreText;
 var alertText; // alerts the player
+var alertBox; // rectangle behind the alert text
 var background; // the background image
+var ambianceSound;
 
 // constants (set in init function)
 var STAGE_WIDTH;
@@ -117,7 +119,7 @@ function tick(event) {
 		// spawn a new plane
 		if ((new Date().getTime() - lastPlaneSpawnedTime > Math.floor(Math.random() * MAX_TIME_BETWEEN_PLANE_SPAWN) + MIN_TIME_BETWEEN_PLANE_SPAWN) && questionCounter + 1 <= questions.length) {
 			
-			if ((Math.floor(Math.random() * 5) + 1) == 4 && numberOfPlanesTakingOff == 0) { // 1 in 5 chance to spawn a plane on the runway
+			if ((Math.floor(Math.random() * 4) + 1) == 3 && numberOfPlanesTakingOff == 0) { // 1 in 4 chance to spawn a plane on the runway
 				setupTakingOffPlane(landingPlanes[questionCounter]);
 			} else {
 				landingPlanes[questionCounter].flying = true;
@@ -136,6 +138,7 @@ function tick(event) {
 				landingPlanes[i].label.x = landingPlanes[i].bitmap.x + landingPlanes[i].width/2 - landingPlanes[i].label.getMeasuredWidth()/2; // center label over plane
 				if (landingPlanes[i].bitmap.x + landingPlanes[i].width < 0) {
 					if (!landingPlanes[i].solved) { // if the plane left the screen without the question being solved
+						sendAlertMessage("Missed plane! -100pts");
 						updateScore(-100);
 						stage.removeChild(landingPlanes[i].label); // remove the label from the stage as well
 						landingPlanes[i].flying = false; // plane is no longer flying and will no longer be updated
@@ -162,8 +165,9 @@ function tick(event) {
 	
 	}
 
+
 	// detects when game is over (see gameover boolean variable)
-	if (gameover) {
+	if (gameover && questionCounter == questions.length) {
 		endGame();
 	}
 
@@ -196,6 +200,22 @@ function setupManifest() {
 	{
 		src: "images/pc12.png",
 		id: "pc12"
+	},
+	{
+		src: "sounds/click.mp3",
+		id: "click"
+	},
+	{
+		src: "sounds/correct.mp3",
+		id: "correct"
+	},
+	{
+		src: "sounds/flyby.mp3",
+		id: "flyby"
+	},
+	{
+		src: "sounds/ambiance.mp3",
+		id: "ambiance"
 	}
 	];
 }
@@ -260,6 +280,10 @@ function loadComplete(event) {
  * Starts the game.
  */
 function startGame(event) {
+	playSound("click");
+	ambianceSound = createjs.Sound.play("ambiance", {loop:-1});
+	ambianceSound.volume = 0.8;
+
 	event.remove();
 	//ticker calls update function, set the FPS
 	createjs.Ticker.setFPS(FPS);
@@ -280,6 +304,9 @@ function endGame() {
 
 	overlayedDiv.style.visibility = "hidden";
 
+	ambianceSound.stop();
+	ambianceSound = null;
+
 
 	gameStarted = false;
 	var gameOverText = new createjs.Text("Game Complete! Score: " + score, "50px Lato", "black");
@@ -292,6 +319,7 @@ function endGame() {
 	stage.addChild(playAgainText);
 	stage.update();
 	stage.on("stagemousedown", function() {
+		playSound("click");
 		location.reload(); // for now just reload the document
 	});
 }
@@ -350,22 +378,30 @@ function setupPlanes() {
 
 		// plane click action listener
 		landingPlanes[i].bitmap.on("click", function Timmy(event) {
-			if (box != null) {
-				stage.removeChild(box); // remove box if there is previously one
-			}
 
 			var id = event.target.name;
 
-			// add selection box around the plane
-			box = new createjs.Shape();
-			box.graphics.setStrokeDash([2,2]);
-			box.graphics.beginStroke("red").drawRect(landingPlanes[id].bitmap.x - 10, landingPlanes[id].bitmap.y - 10, landingPlanes[id].width + 20, landingPlanes[id].height + 20);
-			stage.addChild(box);
+			if (landingPlanes[id].flying || landingPlanes[id].takingOff) {
+				playSound("click");
 
-			selectedPlane = landingPlanes[id]; // set this planeObject as the selected plane
+				if (box != null) {
+					stage.removeChild(box); // remove box if there is previously one
+				}
 
-			// update HTML question <p>
-			document.getElementById("question").innerHTML = landingPlanes[id].question + " = ";
+				
+
+				// add selection box around the plane
+				box = new createjs.Shape();
+				box.graphics.setStrokeDash([2,2]);
+				box.graphics.beginStroke("red").drawRect(landingPlanes[id].bitmap.x - 10, landingPlanes[id].bitmap.y - 10, landingPlanes[id].width + 20, landingPlanes[id].height + 20);
+				stage.addChild(box);
+
+				selectedPlane = landingPlanes[id]; // set this planeObject as the selected plane
+
+				// update HTML question <p>
+				document.getElementById("question").innerHTML = landingPlanes[id].question + " = ";
+			}
+			
 		});
 		landingPlanes[i].mouseEnabled = true;
 
@@ -381,8 +417,8 @@ function setupPlanes() {
 function setupTakingOffPlane(plane) {
 	plane.bitmap.alpha = 0; // set plane to not visible
 	plane.takingOff = true;
-	plane.bitmap.x = STAGE_WIDTH/2;
-	plane.bitmap.y = 520;
+	plane.bitmap.x = STAGE_WIDTH/2 - plane.width/2;
+	plane.bitmap.y = 540 - plane.height/2;
 	plane.label.x = plane.bitmap.x + plane.width/2 - plane.label.getMeasuredWidth()/2; // center label over plane
 	plane.label.y = plane.bitmap.y - plane.label.getMeasuredHeight();
 	plane.bitmap.regX = plane.width/2;
@@ -397,14 +433,19 @@ function setupTakingOffPlane(plane) {
  * Enter button is pressed
  */
 function enterPressed() {
+
 	if (gameStarted) {
 		if (selectedPlane == null) { // no plane is selected
 			
+			playSound("click");
 			sendAlertMessage("Please select (click) on a plane!");
 
 		} else if (numberOfPlanesTakingOff == 0 || selectedPlane.takingOff) {
 			if (parseInt(userInput.value) == selectedPlane.answer) { // correct answer
 
+				sendAlertMessage("Correct! +100pts");
+				playSound("flyby");
+				playSound("correct");
 				updateScore(100);
 				stage.removeChild(selectedPlane.label);
 				stage.removeChild(box);
@@ -418,6 +459,7 @@ function enterPressed() {
 				}
 		
 			} else { // wrong answer
+				sendAlertMessage("Incorrect... -50pts");
 				updateScore(-50);
 
 			}
@@ -425,7 +467,17 @@ function enterPressed() {
 
 		} else { // if there is a plane on the runway
 			sendAlertMessage("Alert! Runway is obstructed!");
+			playSound("click");
 		}
+	}
+}
+
+/*
+ * Plays a sound if the game is not muted.
+ */
+function playSound(id) {
+	if (!mute) {
+		createjs.Sound.play(id);
 	}
 }
 
@@ -434,13 +486,25 @@ function enterPressed() {
  */
 function sendAlertMessage(message) {
 	if (alertText != null) { stage.removeChild(alertText); }
+	if (alertBox != null) { stage.removeChild(alertBox); }
+
+	// the alert text
 	alertText = new createjs.Text(message, "16px Lato", "red");
 	alertText.x = STAGE_WIDTH/2 - alertText.getMeasuredWidth()/2;
 	alertText.y = 600;
+
+	// the background alert box so the text is easier to read
+	alertBox = new createjs.Shape();
+	alertBox.graphics.setStrokeStyle(2);
+	alertBox.graphics.beginStroke("black").beginFill("white").drawRect(STAGE_WIDTH/2 - alertText.getMeasuredWidth()/2, 600, alertText.getMeasuredWidth(), alertText.getMeasuredHeight());
+
+	// add the alert elements to the stage
+	stage.addChild(alertBox);
 	stage.addChild(alertText);
 
 	setTimeout( function() {
 		stage.removeChild(alertText);
+		stage.removeChild(alertBox);
 	}, 3000); // alert stays for 3 seconds
 }
 
@@ -449,12 +513,12 @@ function sendAlertMessage(message) {
  */
 function takeOff(plane) {
 	numberOfPlanesTakingOff--;
+	plane.takingOff = false;
 	createjs.Tween.get(plane.bitmap)
 		.to({x:plane.bitmap.x + 150, rotation: -20}, 1700) // go down runway
 		.to({x:plane.bitmap.x + 1000, y:plane.bitmap.y - 500}, 6000) // lift off
 		.call( function() {
 			stage.removeChild(plane.bitmap);
-			plane.takingOff = false;
 		});
 
 	resetSelectedPlane();
@@ -466,9 +530,10 @@ function takeOff(plane) {
  */
 function land(plane) {
 	plane.speed = 0; // set plane speed to 0 since we will be suing TweenJS for this, not the tick function
+	plane.flying = false; // plane will no longer be updated
 
 	createjs.Tween.get(plane.bitmap)
-		.to({x:plane.bitmap.x - 1000, y:400}, 3500) // send plane off to left of screen
+		.to({x:plane.bitmap.x - 1000, y:360, rotation: -10}, 3500) // send plane off to left of screen
 		.call(function() {
 			plane.bitmap.regX = plane.width/2;
 			plane.bitmap.regY = plane.height/2;
@@ -477,11 +542,10 @@ function land(plane) {
 		.to({x:STAGE_WIDTH/2 - 200, y:480}, 3000) // decelerate plane for landing in increments
 		.to({x:STAGE_WIDTH/2 - 100, y:500}, 1000)
 		.to({x:STAGE_WIDTH/2, y: 520}, 1000)
-		.to({x:STAGE_WIDTH/2 + 200, alpha:0}, 3000)
+		.to({x:STAGE_WIDTH/2 + 200, alpha:0, rotation: 0}, 3000)
 		//.to({alpha:0}, 1000) // fade plane out
 		.call( function() {
 			stage.removeChild(plane.bitmap); // remove plane from stage
-			plane.flying = false; // plane will no longer be updated
 		});
 	
 	resetSelectedPlane();
@@ -520,8 +584,12 @@ function toggleMute() {
 
 	if (mute) {
 		document.getElementById("mute").firstElementChild.setAttribute("src", "images/mute.png");
+		ambianceSound.stop();
+		ambianceSound = null;
 	} else {
 		document.getElementById("mute").firstElementChild.setAttribute("src", "images/unmute.png");
+		ambianceSound = createjs.Sound.play("ambiance", {loop:-1});
+		ambianceSound.volume = 0.8;
 	}
 }
 
